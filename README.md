@@ -19,6 +19,8 @@ Along the way I figured I'd CloudFormation it up a bit, because managing AWS res
 leave a few of them around when you're done and be very confused about your bill.
 
 ## Installation
+* Run `python cloudformation/build_template.py` from the root directory to create the `lambda-website-monitor.yaml`
+file, which will contain the inline Lambda code.
 * Deploy the `cloudformation/lambda-website-monitor.yaml` CloudFormation template to the desired region in your AWS 
 account. Note that SMS support is only available in the following regions:  
 <https://docs.aws.amazon.com/sns/latest/dg/sms_supported-countries.html>

@@ -22,6 +22,21 @@ Resources:
         # PutLogEvents on a specific group or stream.
         # See: https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatchlogs.html
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  WebsiteMonitorLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt WebsiteMonitorLambdaIAMRole.Arn
+      Runtime: python3.7
+      Description: Lambda function that checks HTTP status on a given URL
+      MemorySize: 128
+      Timeout: 35  # 30 second timeout, plus 5 for Lambda initialization, etc.
+      Code:
+        ZipFile: |
+          raise Exception("Run build_template.py first to load code into CloudFormation template")
+  WebsiteMonitorSNSTopic:
+    Type: AWS::SNS::Topic
+
 Outputs:
   WebsiteMonitorLambdaIAMRoleOutput:
     Description: ARN of the IAM role used by the website monitoring Lambda function

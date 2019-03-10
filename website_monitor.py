@@ -1,5 +1,4 @@
-from botocore.vendored import requests
-from botocore.vendored.requests import HTTPError
+from botocore.vendored.requests import request, HTTPError
 
 
 def handler(event, _context):
@@ -8,7 +7,7 @@ def handler(event, _context):
 
     method = event.get('method', 'head').lower()
     timeout = int(event.get('timeout', 30))
-    response = requests.request(method, event['url'], timeout=timeout)
+    response = request(method, event['url'], timeout=timeout)
     try:
         response.raise_for_status()
     except HTTPError as e:
