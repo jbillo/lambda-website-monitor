@@ -20,7 +20,10 @@ leave a few of them around when you're done and be very confused about your bill
 
 ## Installation
 * Run `python cloudformation/build_template.py` from the root directory to create the `lambda-website-monitor.yaml`
-file, which will contain the inline Lambda code.
+file, which will contain the inline Lambda code. 
+    * Alternatively, pick a GitHub release of the .yaml template 
+    (<https://github.com/jbillo/lambda-website-monitor/releases>) that seems reasonable, if you don't want to build
+    locally.
 * Deploy the `cloudformation/lambda-website-monitor.yaml` CloudFormation template to the desired region in your AWS 
 account. Note that SMS support is only available in the following regions, so despite my love for us-east-2 I've
 picked a different region:  
