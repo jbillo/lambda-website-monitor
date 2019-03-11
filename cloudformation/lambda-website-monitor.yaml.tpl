@@ -8,6 +8,13 @@ Parameters:
     Type: String
     Description: URL to monitor
 Resources:
+  WebsiteMonitorSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Protocol: email
+          Endpoint: !Sub "${AlertEmail}"
+
   WebsiteMonitorLambdaIAMRole:
     # https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html
     Type: AWS::IAM::Role
@@ -28,6 +35,18 @@ Resources:
         # logged events from a Lambda to a specific CloudWatch Logs log group/stream.
         # See: https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazoncloudwatchlogs.html
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        -
+          PolicyName: AllowLambdaSNSPublish
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "sns:Publish"
+                Resource: !Ref WebsiteMonitorSNSTopic
+
   WebsiteMonitorLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -40,13 +59,6 @@ Resources:
       Code:
         ZipFile: |
           raise Exception("Run build_template.py first to load code into CloudFormation template")
-  WebsiteMonitorSNSTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      Subscription:
-        -
-          Protocol: email
-          Endpoint: !Sub "${AlertEmail}"
 
   WebsiteMonitorTriggerRule:
     Type: AWS::Events::Rule
