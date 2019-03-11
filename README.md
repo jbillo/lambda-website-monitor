@@ -1,5 +1,5 @@
 # lambda-website-monitor
-Yet another tool to monitor (non-AWS) websites using AWS Lambda
+Yet another tool to monitor (non-AWS) websites using AWS Lambda, CloudWatch and CloudFormation
 
 ## Background
 There are *a lot* of tutorials out there discussing how you can monitor website uptime using a simple Lambda function. 
@@ -68,7 +68,7 @@ per month.
     * SMS rates (not yet supported) are here: <https://aws.amazon.com/sns/sms-pricing/>
     * If you have an exceptionally noisy month in terms of outages, it's entirely possible that you could exceed the 
     email delivery tier (chargeable at $2/100K emails). Try to fix your websites quickly.
-* *IAM*: Free.     
+* *IAM*: Free. 
 * *CloudFormation*: Free, but if you upload the YAML template through your browser, it will go into a newly created S3 
 bucket (versioning disabled, but each template upload is stored as a new object.) 
     * Once you have uploaded the template, consider deleting the `cf-templates-*` bucket to avoid 1-2 cent charges.
@@ -80,10 +80,22 @@ free outbound traffic from AWS to the Internet.
 
 ## Possible improvements
 Feel free to send a pull request for any improvements you might think of, including:
-* Multiple checks of remote host before firing an alert
-* Support for checking multiple websites/URLs - consider Lambda environment variables
-* Minification of code in .yaml template, as well as removal of comments in final output file
+* Multiple checks of remote host in the function before firing an alert
+    * Consider firing off to another Lambda or some queuing mechanism so that we don't spend more execution time
+    in the same function
+* Support for checking multiple websites/URLs with different targets - consider Lambda environment variables or
+DynamoDB (free tier should be sufficient)
+* If we're going as far as DynamoDB integration, consider tracking history of downtime there too
+* Better minification of code in .yaml template, as well as removal of comments in final output file
 * SMS support
+* Link in email directly to CloudWatch Logs page (eg: 
+<https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/aws/lambda/WebsiteMonitorLambda-WebsiteMonitorLambdaFunction-138TRY2UZTV9>) - 
+might need a CloudFormation export to get the Lambda name
+* CI deployment mechanism, or at least examples to get this stack deployed/updated over CLI
+* Versioning of the code and/or template
+* Tagging resources with attributes other than the stack tags
+* Better timeout value (multiple websites may take over 35 seconds, especially with timeouts); fork/refork functionality
+that continues the Lambda if we have a long timeout on one site 
 
 ## References and resources
 Other solutions and documentation I reviewed while developing this included:
