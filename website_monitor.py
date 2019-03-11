@@ -1,8 +1,8 @@
-from botocore.vendored.requests import request, HTTPError, ConnectionError
+from botocore.vendored.requests import request, HTTPError, ConnectionError, Timeout
 from os import environ
 
 
-def _pub_error(url, response, exception):
+def _pub_error(url, exception):
     arn = environ.get('SNS_TOPIC_ARN')
     if not arn:
         raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
@@ -13,16 +13,16 @@ def _pub_error(url, response, exception):
         error_type = 'HTTP'
     elif isinstance(exception, ConnectionError):
         error_type = 'Connection'
+    elif isinstance(exception, Timeout):
+        error_type = 'Timeout'
     else:
         error_type = 'Unknown'
 
     code = 'N/A'
     headers = None
-    if response:
-        if response.hasattr('status_code'):
-            code = response.status_code
-        if response.hasattr('headers'):
-            headers = response.headers
+    if hasattr(exception, 'response') and exception.response is not None:
+        code = exception.response.status_code
+        headers = exception.response.headers
 
     msg = "{error_type} error contacting URL {url} (code:{code})" \
           "\nResponse headers: {headers}" \
@@ -46,15 +46,15 @@ def handler(event, _context):
 
     # if still not present, bail
     if not url:
-        raise ValueError("Missing 'url' in event: {}".format(event))
+        raise ValueError("Missing URL in environment variable or event: {}".format(event))
 
     method = event.get('method', 'head').lower()
-    timeout = int(event.get('timeout', 30))
+    timeout = float(event.get('timeout', 30.0))
     try:
         response = request(method, event['url'], timeout=timeout)
         response.raise_for_status()
-    except (HTTPError, ConnectionError) as e:
-        return _pub_error(event['url'], e.response, e)
+    except (HTTPError, ConnectionError, Timeout) as e:
+        return _pub_error(event['url'], e)
 
     print("HTTP success code {code} contacting URL {url} (headers: {headers})".format(
         code=response.status_code, url=event['url'], headers=response.headers)
