@@ -8,8 +8,6 @@ from urllib.parse import urlparse
 
 from boto3 import resource
 
-ERRORS = {}
-
 
 def request(method, url, timeout=None):
     scheme, host, path, params, query, fragment = urlparse(url)
@@ -27,7 +25,7 @@ def request(method, url, timeout=None):
             connection.close()
 
 
-def _add_error(url, exception):
+def _construct_error_msg(url, exception):
     if isinstance(exception, HTTPException):
         error_type = 'HTTP'
     elif isinstance(exception, ConnectionError):
@@ -43,7 +41,7 @@ def _add_error(url, exception):
     headers = None
     if getattr(exception, 'response', None):
         code = exception.response.status_code
-        headers = exception.response.headers
+        headers = exception.response.headers.items()
 
     msg = (
         f"{error_type} error contacting URL {url} (code:{code})"
@@ -51,21 +49,21 @@ def _add_error(url, exception):
         f"\nOriginal exception: {exception}"
     )
     print(msg)
-    ERRORS[url] = msg
+    return msg
 
 
-def _publish_errors():
+def _publish_errors(errors):
     arn = environ.get('SNS_TOPIC_ARN')
     if not arn:
         raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
 
     topic = resource('sns').Topic(arn)
 
-    publish_urls = ', '.join(sorted(ERRORS.keys()))
+    publish_urls = ', '.join(sorted(errors.keys()))
     publish_urls = publish_urls[0:-2]
 
     publish_msg = ''
-    for msg in ERRORS.values():
+    for msg in errors.values():
         publish_msg += msg + '\n\n'
 
     return topic.publish(
@@ -75,6 +73,8 @@ def _publish_errors():
 
 
 def handler(event, _context):
+    errors = {}
+    successes = {}
     url = event.get('url')
     # read from environment variable if not present in event
     if not url:
@@ -97,13 +97,21 @@ def handler(event, _context):
             if response.status not in (200, 204):
                 raise HTTPException()
         except Exception as e:
-            _add_error(u, e)
+            errors[u] = _construct_error_msg(u, e)
             continue
 
+        headers = response.headers.items()
+
+        successes[u] = {'status': response.status, 'headers': headers}
         print(
             f"HTTP success code {response.status} contacting URL {u} "
-            f"(headers: {response.headers})"
+            f"(headers: {headers})"
         )
 
-    if ERRORS:
-        _publish_errors()
+    if errors:
+        _publish_errors(errors)
+
+    return {
+        'successes': successes,
+        'errors': errors
+    }
