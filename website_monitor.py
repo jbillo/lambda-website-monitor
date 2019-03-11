@@ -1,8 +1,8 @@
 from botocore.vendored.requests import request, HTTPError, ConnectionError
+from os import environ
 
 
 def _pub_error(url, response, exception):
-    from os import environ
     arn = environ.get('SNS_TOPIC_ARN')
     if not arn:
         raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
@@ -34,7 +34,13 @@ def _pub_error(url, response, exception):
 
 
 def handler(event, _context):
-    if 'url' not in event:
+    url = event.get('url')
+    # read from environment variable if not present in event
+    if not url:
+        url = environ.get('URL')
+
+    # if still not present, bail
+    if not url:
         raise ValueError("Missing 'url' in event: {}".format(event))
 
     method = event.get('method', 'head').lower()
