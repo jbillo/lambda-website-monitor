@@ -16,14 +16,19 @@ def _pub_error(url, response, exception):
     else:
         error_type = 'Unknown'
 
-    if response and response.hasattr('status_code'):
-        code = response.status_code
-    else:
-        code = 'N/A'
+    code = 'N/A'
+    headers = None
+    if response:
+        if response.hasattr('status_code'):
+            code = response.status_code
+        if response.hasattr('headers'):
+            headers = response.headers
 
-    msg = "{error_type} error contacting URL {url} (code:{code}): \n{exception}".format(
-        url=url, error_type=error_type, code=code, exception=exception
-    )
+    msg = "{error_type} error contacting URL {url} (code:{code})" \
+          "\nResponse headers: {headers}" \
+          "\nOriginal exception: {exception}".format(url=url, code=code,
+                                                     headers=headers, error_type=error_type,
+                                                     exception=exception)
     print(msg)
     return topic.publish(
         Message=msg,
@@ -51,6 +56,6 @@ def handler(event, _context):
     except (HTTPError, ConnectionError) as e:
         return _pub_error(event['url'], e.response, e)
 
-    print("HTTP success code {code} contacting URL {url}".format(
-        code=response.status_code, url=event['url'])
+    print("HTTP success code {code} contacting URL {url} (headers: {headers})".format(
+        code=response.status_code, url=event['url'], headers=response.headers)
     )
