@@ -8,8 +8,8 @@ encourage awful security practices or program behaviours:
 
 * Hard-coding AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) directly in the Lambda function
 * Giving publish permissions to the SNS topic to everyone
-* Having the Lambda function itself publish failures to SNS, rather than raising an exception and letting
-CloudWatch handle what comes next
+    * This is further complicated with SNS topic policies vs. IAM policies for SNS: 
+    <https://docs.aws.amazon.com/sns/latest/dg/sns-using-identity-based-policies.html>
 
 The goal with this project was to provide a simple `check-http` Nagios replacement for monitoring websites of friends,
 family and well-wishers where the tool was not hosted in the same Newark, NJ datacenter as all the Linodes in question. 
@@ -26,17 +26,31 @@ account. Note that SMS support is only available in the following regions, so de
 picked a different region:  
 <https://docs.aws.amazon.com/sns/latest/dg/sms_supported-countries.html>
 
-## Deployment Notes
+## Deployment notes
 * To run locally, build and activate a venv and then `pip install boto3==1.7.74`. Then run `python bootstrap.py`
 with the desired URL. See `bootstrap.py` for additional parameters.
 * The Lambda function creates a CloudWatch Logs log group with infinite retention. Adjust this afterward. Possible
 feature request to AWS? (As well as being able to specify a specific CWL log group for Lambda output.)
 
-## Code Notes
-* Lambda currently uses boto3 1.7.74: <https://docs.aws.amazon.com/lambda/latest/dg/current-supported-versions.html>.
-We can use `botocore.vendored.requests` (2.7.0) since botocore is a dependency. 
+## Development notes and decisions
 
-## AWS Costs
+### CloudWatch Alarms on error-like HTTP status codes
+A somewhat-common behaviour in tutorials that I didn't understand was having the Lambda function publish failures to 
+the SNS topic, rather than just raising an exception and letting the `Errors` metric for the function trigger a 
+CloudWatch alarm. When I implemented this behaviour at first, the email message that came to the SNS topic had no 
+additional details about the specific remote site, and you couldn't insert any custom messaging.
+
+As a result, I've since changed my thinking on this, and `HTTPError`s raised by `requests` will now also poke the
+SNS topic in question using boto3 with a friendlier message. Function invocation failures (none in past 10 minutes) and
+other exceptions will still fire a generic CloudWatch alarm message to the topic, at which point the onus is on the
+operator to investigate CloudWatch Logs and figure out what's going on.
+
+### Use of `requests` library
+Lambda currently uses boto3 1.7.74: <https://docs.aws.amazon.com/lambda/latest/dg/current-supported-versions.html>.
+We can use `botocore.vendored.requests` (2.7.0) since botocore is a dependency. This lets us embed the Lambda code
+directly in the CloudFormation template without creating a zipped package and uploading it to S3. 
+
+## AWS costs
 * *Lambda*: Should fall within the always-free tier of 1,000,000 requests/month and 400,000 GB/seconds of compute time 
 per month.
     * At a 5-minute invocation interval, that's 12 times per hour, or 8,640 invocations in a 30-day month; 
@@ -61,17 +75,17 @@ bucket (versioning disabled, but each template upload is stored as a new object.
 * Bandwidth: The Lambda function has to reach out to the Internet to contact the remote servers. You get 1GB/month
 free outbound traffic from AWS to the Internet.
     * Assuming those pages are not downloading large amounts of content with a GET request 
-    (the check HTTP method defaults to HEAD), you again should be well within the free tier. 
+    (the check HTTP method defaults to HEAD), you should still be well within the free tier. 
  
 
-## Possible Improvements
+## Possible improvements
 Feel free to send a pull request for any improvements you might think of, including:
 * Multiple checks of remote host before firing an alert
 * Support for checking multiple websites/URLs - consider Lambda environment variables
 * Minification of code in .yaml template, as well as removal of comments in final output file
 * SMS support
 
-## References and Resources
+## References and resources
 Other solutions and documentation I reviewed while developing this included:
 
 * AWS documentation (mainly CloudFormation, Lambda and IAM)

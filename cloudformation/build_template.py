@@ -13,7 +13,7 @@ inline_code = code_lines[0]
 
 # Indent all other lines
 for code_line in code_lines[1:]:
-    if code_line == '\n':  # skip blank lines (sort of minifying)
+    if code_line == '\n' or code_line.strip().startswith('#'):  # skip blank lines and comments (sort of minifying)
         continue
     inline_code += '  ' * 5  # 5 indentations of 2 spaces: Resources > Function > Properties > Code > ZipFile > Join
     inline_code += code_line

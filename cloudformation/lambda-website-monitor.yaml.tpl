@@ -56,6 +56,9 @@ Resources:
       Description: Lambda function that checks HTTP status on a given URL
       MemorySize: 128
       Timeout: 35  # 30 second timeout, plus 5 for Lambda initialization, etc.
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref WebsiteMonitorSNSTopic
       Code:
         ZipFile: |
           raise Exception("Run build_template.py first to load code into CloudFormation template")
