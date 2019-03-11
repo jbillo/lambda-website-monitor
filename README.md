@@ -43,15 +43,22 @@ the SNS topic, rather than just raising an exception and letting the `Errors` me
 CloudWatch alarm. When I implemented this behaviour at first, the email message that came to the SNS topic had no 
 additional details about the specific remote site, and you couldn't insert any custom messaging.
 
-As a result, I've since changed my thinking on this, and `HTTPError`s raised by `requests` will now also poke the
+As a result, I've since changed my thinking on this, and errors (connection, HTTP, TLS) will now also poke the
 SNS topic in question using boto3 with a friendlier message. Function invocation failures (none in past 10 minutes) and
 other exceptions will still fire a generic CloudWatch alarm message to the topic, at which point the onus is on the
 operator to investigate CloudWatch Logs and figure out what's going on.
 
-### Use of `requests` library
+### Previous use of `requests` library
 Lambda currently uses boto3 1.7.74: <https://docs.aws.amazon.com/lambda/latest/dg/current-supported-versions.html>.
-We can use `botocore.vendored.requests` (2.7.0) since botocore is a dependency. This lets us embed the Lambda code
-directly in the CloudFormation template without creating a zipped package and uploading it to S3. 
+We previously used `botocore.vendored.requests` (2.7.0) since botocore is a dependency of boto3, and `requests` was
+included. However, this approach is deprecated, and we don't want to directly add a dependency on `requests`.
+This lets us embed the Lambda code directly in the CloudFormation template without creating a zipped package and 
+uploading it to S3. 
+
+### Don't use global variables
+Should go without saying, but CloudWatch Events at a 5-minute interval can keep the Firecracker container warm.
+As a result, when we stored errors in a global variable outside the handler, the same failure message would fire every
+5 minutes without clearing - even if URLs were updated or the error condition was clear.
 
 ## AWS costs
 * *Lambda*: Should fall within the always-free tier of 1,000,000 requests/month and 400,000 GB/seconds of compute time 
@@ -99,6 +106,7 @@ might need a CloudFormation export to get the Lambda name
 * Tagging resources with attributes other than the stack tags
 * Better timeout value (multiple websites may take over 35 seconds, especially with timeouts); fork/refork functionality
 that continues the Lambda if we have a long timeout on one site 
+* Class that stores state for single Lambda invocation
 
 ## References and resources
 Other solutions and documentation I reviewed while developing this included:
