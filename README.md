@@ -36,11 +36,40 @@ feature request to AWS? (As well as being able to specify a specific CWL log gro
 * Lambda currently uses boto3 1.7.74: <https://docs.aws.amazon.com/lambda/latest/dg/current-supported-versions.html>.
 We can use `botocore.vendored.requests` (2.7.0) since botocore is a dependency. 
 
+## AWS Costs
+* *Lambda*: Should fall within the always-free tier of 1,000,000 requests/month and 400,000 GB/seconds of compute time 
+per month.
+    * At a 5-minute invocation interval, that's 12 times per hour, or 8,640 invocations in a 30-day month; 
+    well under the million-request limit. 
+    * At 128MB allocated memory, you get 3,200,000 seconds/month; assuming the function always times out at 35
+    seconds of runtime and you do nothing to stop it, that's 302,400 seconds, so about 10% of your free tier.
+    * My checks on a single crappily-optimized (but behaving) WordPress site take about 400-800ms, so your usage will 
+     probably be closer to 7000 seconds (0.02%) of free compute time.
+* *CloudWatch*: Always-free tier provides 10 custom metrics and 10 alarms, with 1M API requests. 
+    * We create 2 CloudWatch Alarms and the metrics are provided natively by the Lambda function. 
+    * CloudWatch Logs allows ingestion of 5GB per month plus 5GB log storage. While it's highly unlikely that the
+    output from this script will ever approach those values, consider setting the retention on the CloudWatch Logs
+    log group to something other than unlimited to avoid charges.
+* *SNS*: 1 million publishes, 1000 email deliveries, 100 international SMS free.
+    * SMS rates (not yet supported) are here: <https://aws.amazon.com/sns/sms-pricing/>
+    * If you have an exceptionally noisy month in terms of outages, it's entirely possible that you could exceed the 
+    email delivery tier (chargeable at $2/100K emails). Try to fix your websites quickly.
+* *IAM*: Free.     
+* *CloudFormation*: Free, but if you upload the YAML template through your browser, it will go into a newly created S3 
+bucket (versioning disabled, but each template upload is stored as a new object.) 
+    * Once you have uploaded the template, consider deleting the `cf-templates-*` bucket to avoid 1-2 cent charges.
+* Bandwidth: The Lambda function has to reach out to the Internet to contact the remote servers. You get 1GB/month
+free outbound traffic from AWS to the Internet.
+    * Assuming those pages are not downloading large amounts of content with a GET request 
+    (the check HTTP method defaults to HEAD), you again should be well within the free tier. 
+ 
+
 ## Possible Improvements
 Feel free to send a pull request for any improvements you might think of, including:
 * Multiple checks of remote host before firing an alert
-* Support for checking multiple websites/URLs
+* Support for checking multiple websites/URLs - consider Lambda environment variables
 * Minification of code in .yaml template, as well as removal of comments in final output file
+* SMS support
 
 ## References and Resources
 Other solutions and documentation I reviewed while developing this included:
