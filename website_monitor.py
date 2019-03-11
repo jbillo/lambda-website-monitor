@@ -1,30 +1,55 @@
-from botocore.vendored.requests import request, HTTPError, ConnectionError, Timeout
+import socket
+from http.client import HTTPConnection
+from http.client import HTTPException
+from http.client import HTTPSConnection
 from os import environ
+from ssl import SSLError
+from urllib.parse import urlparse
+
+from boto3 import resource
 
 ERRORS = {}
 
 
+def request(method, url, timeout=None):
+    scheme, host, path, params, query, fragment = urlparse(url)
+    connection = None
+    try:
+        if scheme == 'https':
+            connection = HTTPSConnection(host, timeout=timeout)
+        else:
+            connection = HTTPConnection(host, timeout=timeout)
+
+        connection.request(method, url)
+        return connection.getresponse()
+    finally:
+        if connection:
+            connection.close()
+
+
 def _add_error(url, exception):
-    if isinstance(exception, HTTPError):
+    if isinstance(exception, HTTPException):
         error_type = 'HTTP'
     elif isinstance(exception, ConnectionError):
         error_type = 'Connection'
-    elif isinstance(exception, Timeout):
+    elif isinstance(exception, socket.timeout):
         error_type = 'Timeout'
+    elif isinstance(exception, SSLError):
+        error_type = 'SSL'
     else:
         error_type = 'Unknown'
 
     code = 'N/A'
     headers = None
-    if hasattr(exception, 'response') and exception.response is not None:
+    if getattr(exception, 'response', None):
         code = exception.response.status_code
         headers = exception.response.headers
 
-    msg = "{error_type} error contacting URL {url} (code:{code})" \
-          "\nResponse headers: {headers}" \
-          "\nOriginal exception: {exception}".format(url=url, code=code,
-                                                     headers=headers, error_type=error_type,
-                                                     exception=exception)
+    msg = (
+        f"{error_type} error contacting URL {url} (code:{code})"
+        f"\nResponse headers: {headers}"
+        f"\nOriginal exception: {exception}"
+    )
     print(msg)
     ERRORS[url] = msg
 
@@ -33,8 +58,7 @@ def _publish_errors():
     arn = environ.get('SNS_TOPIC_ARN')
     if not arn:
         raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
-    # boto3 operates with Lambda IAM role permissions
-    from boto3 import resource
+
     topic = resource('sns').Topic(arn)
 
     publish_urls = ', '.join(sorted(ERRORS.keys()))
@@ -46,7 +70,7 @@ def _publish_errors():
 
     return topic.publish(
         Message=publish_msg,
-        Subject='WebsiteMonitor: Error contacting {url}'.format(url=publish_urls)
+        Subject=f'WebsiteMonitor: Error contacting {publish_urls}'
     )
 
 
@@ -58,9 +82,11 @@ def handler(event, _context):
 
     # if still not present, bail
     if not url:
-        raise ValueError("Missing URL in environment variable or event: {}".format(event))
+        raise ValueError(
+            f"Missing URL in environment variable or event: {event}"
+        )
 
-    method = event.get('method', 'head').lower()
+    method = event.get('method', 'head').upper()
     timeout = float(event.get('timeout', 30.0))
 
     # split URL by spaces and repeat checks
@@ -68,13 +94,15 @@ def handler(event, _context):
     for u in url:
         try:
             response = request(method, u, timeout=timeout)
-            response.raise_for_status()
-        except (HTTPError, ConnectionError, Timeout) as e:
+            if response.status not in (200, 204):
+                raise HTTPException()
+        except Exception as e:
             _add_error(u, e)
             continue
 
-        print("HTTP success code {code} contacting URL {url} (headers: {headers})".format(
-            code=response.status_code, url=u, headers=response.headers)
+        print(
+            f"HTTP success code {response.status} contacting URL {u} "
+            f"(headers: {response.headers})"
         )
 
     if ERRORS:
