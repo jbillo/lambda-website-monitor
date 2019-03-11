@@ -37,10 +37,8 @@ def _publish_errors():
     from boto3 import resource
     topic = resource('sns').Topic(arn)
 
-    publish_urls = ''
-    for url in sorted(ERRORS.keys()):
-        publish_urls = ', '.join(url)
-        publish_urls = publish_urls[0:-2]
+    publish_urls = ', '.join(sorted(ERRORS.keys()))
+    publish_urls = publish_urls[0:-2]
 
     publish_msg = ''
     for msg in ERRORS.values():
