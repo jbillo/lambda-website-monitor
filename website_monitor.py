@@ -1,14 +1,10 @@
 from botocore.vendored.requests import request, HTTPError, ConnectionError, Timeout
 from os import environ
 
+ERRORS = {}
 
-def _pub_error(url, exception):
-    arn = environ.get('SNS_TOPIC_ARN')
-    if not arn:
-        raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
-    # boto3 operates with Lambda IAM role permissions
-    from boto3 import resource
-    topic = resource('sns').Topic(arn)
+
+def _add_error(url, exception):
     if isinstance(exception, HTTPError):
         error_type = 'HTTP'
     elif isinstance(exception, ConnectionError):
@@ -30,11 +26,29 @@ def _pub_error(url, exception):
                                                      headers=headers, error_type=error_type,
                                                      exception=exception)
     print(msg)
+    ERRORS[url] = msg
+
+
+def _publish_errors():
+    arn = environ.get('SNS_TOPIC_ARN')
+    if not arn:
+        raise EnvironmentError('Missing SNS_TOPIC_ARN environment variable')
+    # boto3 operates with Lambda IAM role permissions
+    from boto3 import resource
+    topic = resource('sns').Topic(arn)
+
+    publish_urls = ''
+    for url in sorted(ERRORS.keys()):
+        publish_urls = ', '.join(url)
+        publish_urls = publish_urls[0:-2]
+
+    publish_msg = ''
+    for msg in ERRORS.values():
+        publish_msg += msg + '\n\n'
+
     return topic.publish(
-        Message=msg,
-        Subject='WebsiteMonitor: {error_type} error {code} contacting {url}'.format(
-            error_type=error_type, code=code, url=url
-        )
+        Message=publish_msg,
+        Subject='WebsiteMonitor: Error contacting {url}'.format(url=publish_urls)
     )
 
 
@@ -50,12 +64,20 @@ def handler(event, _context):
 
     method = event.get('method', 'head').lower()
     timeout = float(event.get('timeout', 30.0))
-    try:
-        response = request(method, event['url'], timeout=timeout)
-        response.raise_for_status()
-    except (HTTPError, ConnectionError, Timeout) as e:
-        return _pub_error(event['url'], e)
 
-    print("HTTP success code {code} contacting URL {url} (headers: {headers})".format(
-        code=response.status_code, url=event['url'], headers=response.headers)
-    )
+    # split URL by spaces and repeat checks
+    url = sorted(url.split(' '))
+    for u in url:
+        try:
+            response = request(method, u, timeout=timeout)
+            response.raise_for_status()
+        except (HTTPError, ConnectionError, Timeout) as e:
+            _add_error(u, e)
+            continue
+
+        print("HTTP success code {code} contacting URL {url} (headers: {headers})".format(
+            code=response.status_code, url=u, headers=response.headers)
+        )
+
+    if ERRORS:
+        _publish_errors()

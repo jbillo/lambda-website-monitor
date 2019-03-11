@@ -6,7 +6,7 @@ Parameters:
     Description: Email address that should be subscribed to the SNS topic for alerts.
   MonitorURL:
     Type: String
-    Description: URL to monitor
+    Description: URLs to monitor. Separate multiple URLs by spaces.
 Resources:
   WebsiteMonitorSNSTopic:
     Type: AWS::SNS::Topic
@@ -59,6 +59,7 @@ Resources:
       Environment:
         Variables:
           SNS_TOPIC_ARN: !Ref WebsiteMonitorSNSTopic
+          URL: !Ref MonitorURL
       Code:
         ZipFile: |
           raise Exception("Run build_template.py first to load code into CloudFormation template")
@@ -72,7 +73,6 @@ Resources:
         -
           Arn: !GetAtt WebsiteMonitorLambdaFunction.Arn
           Id: WebsiteMonitorLambdaTarget
-          Input: !Sub "{\"url\": \"${MonitorURL}\"}"
 
   # Applied on the Lambda function. Allow the CloudWatch Rule to invoke the function.
   # Note: The API calls for write are AddPermission/RemovePermission, but the read/retrieval equivalent is GetPolicy.
