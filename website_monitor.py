@@ -60,15 +60,20 @@ def _publish_errors(errors):
     topic = resource('sns').Topic(arn)
 
     publish_urls = ', '.join(sorted(errors.keys()))
-    publish_urls = publish_urls[0:-2]
 
     publish_msg = ''
     for msg in errors.values():
         publish_msg += msg + '\n\n'
 
+    subject = f'WebsiteMonitor: Error contacting {publish_urls}'
+    # AWS has an arbitrary SNS subject length limit of 100 characters, returns "Invalid parameter: Subject"
+    # https://github.com/spulec/moto/issues/1503
+    if len(subject) > 100:
+        subject = subject[0:97] + '...'
+
     return topic.publish(
         Message=publish_msg,
-        Subject=f'WebsiteMonitor: Error contacting {publish_urls}'
+        Subject=subject
     )
 
 
