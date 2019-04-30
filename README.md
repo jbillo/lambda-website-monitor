@@ -30,7 +30,7 @@ picked a different region:
 <https://docs.aws.amazon.com/sns/latest/dg/sms_supported-countries.html>
 
 ## Deployment notes
-* To run locally, build and activate a venv and then `pip install boto3==1.7.74`. Then run `python bootstrap.py`
+* To run locally, build and activate a venv and then `pip install -r requirements.txt`. Then run `python bootstrap.py`
 with the desired URL. See `bootstrap.py` for additional parameters.
 * The Lambda function creates a CloudWatch Logs log group with infinite retention. Adjust this afterward. Possible
 feature request to AWS? (As well as being able to specify a specific CWL log group for Lambda output.)
@@ -49,7 +49,6 @@ other exceptions will still fire a generic CloudWatch alarm message to the topic
 operator to investigate CloudWatch Logs and figure out what's going on.
 
 ### Previous use of `requests` library
-Lambda currently uses boto3 1.7.74: <https://docs.aws.amazon.com/lambda/latest/dg/current-supported-versions.html>.
 We previously used `botocore.vendored.requests` (2.7.0) since botocore is a dependency of boto3, and `requests` was
 included. However, this approach is deprecated, and we don't want to directly add a dependency on `requests`.
 This lets us embed the Lambda code directly in the CloudFormation template without creating a zipped package and 
@@ -102,7 +101,7 @@ DynamoDB (free tier should be sufficient)
 <https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logStream:group=/aws/lambda/WebsiteMonitorLambda-WebsiteMonitorLambdaFunction-138TRY2UZTV9>) - 
 might need a CloudFormation export to get the Lambda name
 * CI deployment mechanism, or at least examples to get this stack deployed/updated over CLI
-* Versioning of the code and/or template
+* Versioning of the code
 * Tagging resources with attributes other than the stack tags
 * Better timeout value (multiple websites may take over 35 seconds, especially with timeouts); fork/refork functionality
 that continues the Lambda if we have a long timeout on one site 

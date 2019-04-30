@@ -1,5 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Deploy the Lambda function and dependent resources to monitor websites.
+Metadata:
+  TemplateVersion:
+    Description: "0.0.3"
+
 Parameters:
   AlertEmail:
     Type: String
@@ -7,6 +11,7 @@ Parameters:
   MonitorURL:
     Type: String
     Description: URLs to monitor. Separate multiple URLs by spaces.
+
 Resources:
   WebsiteMonitorSNSTopic:
     Type: AWS::SNS::Topic

@@ -1,5 +1,6 @@
-# Next up
-* 
+# 0.0.3
+* Bump exact dependencies to match python3.7 Lambda execution environment (boto3 1.9.42)
+* Add version number to template metadata
 
 # 0.0.2
 * Move to Python f'strings. Remove dependency on `requests` library as per deprecation warning (@rtkseagray)

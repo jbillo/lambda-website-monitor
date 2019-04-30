@@ -1,0 +1,5 @@
+# As of 2019-04-02, the Lambda execution environment for python3.7 uses botocore 1.12.42, boto3 1.9.42:
+# <https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html>
+# <https://github.com/awsdocs/aws-lambda-developer-guide/blob/ad41e7973f778b651135ccb6f4b350d2feb08aea/doc_source/current-supported-versions.md>
+botocore==1.12.42
+boto3==1.9.42
