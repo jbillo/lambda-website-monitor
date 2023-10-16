@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: Deploy the Lambda function and dependent resources to monitor websites.
 Metadata:
   TemplateVersion:
-    Description: "0.0.3"
+    Description: "0.0.4"
 
 Parameters:
   AlertEmail:
@@ -57,7 +57,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt WebsiteMonitorLambdaIAMRole.Arn
-      Runtime: python3.7
+      Runtime: python3.11
       Description: Lambda function that checks HTTP status on a given URL
       MemorySize: 128
       Timeout: 35  # 30 second timeout, plus 5 for Lambda initialization, etc.

@@ -28,12 +28,15 @@ file, which will contain the inline Lambda code.
 account. Note that SMS support is only available in the following regions, so despite my love for us-east-2 I've
 picked a different region:  
 <https://docs.aws.amazon.com/sns/latest/dg/sms_supported-countries.html>
-
-## Deployment notes
-* To run locally, build and activate a venv and then `pip install -r requirements.txt`. Then run `python bootstrap.py`
-with the desired URL. See `bootstrap.py` for additional parameters.
 * The Lambda function creates a CloudWatch Logs log group with infinite retention. Adjust this afterward. Possible
 feature request to AWS? (As well as being able to specify a specific CWL log group for Lambda output.)
+
+## Upgrade notes
+Follow the installation instructions, but instead of creating a new CloudFormation stack, update the existing stack.
+
+## Running locally
+* To run locally, build and activate a venv and then `pip install -r requirements.txt`. Then run `python bootstrap.py`
+with the desired URL. See `bootstrap.py` for additional parameters.
 
 ## Development notes and decisions
 
